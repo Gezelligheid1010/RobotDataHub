@@ -1,0 +1,70 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: robotdatahub
+      POSTGRES_USER: robot
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123456}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U robot -d robotdatahub"]
+      interval: 5s
+      retries: 15
+  minio:
+    image: docker.io/pgsty/silo:RELEASE.2026-10-26T00-00-00Z
+    command: server /data --console-address ':9001'
+    environment:
+      MINIO_ROOT_USER: ${MINIO_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD:-minioadmin123}
+    volumes:
+      - miniodata:/data
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    healthcheck:
+      test: ["CMD", "silo", "healthcheck", "ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+  server:
+    build: ../server
+    environment:
+      DATABASE_URL: postgres://robot:${POSTGRES_PASSWORD:-robot_local_only}@postgres:5432/robotdatahub?sslmode=disable
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_USER:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_PASSWORD:-minioadmin123}
+      MINIO_BUCKET: robotdatahub
+      API_TOKEN: ${API_TOKEN:?Set API_TOKEN in deploy/.env}
+      CORS_ORIGINS: http://localhost:5173
+    ports:
+      - '8080:8080'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    restart: unless-stopped
+  web:
+    build: ../web
+    ports:
+      - '5173:5173'
+    depends_on:
+      - server
+  worker:
+    build: ../worker-python
+    environment:
+      SERVER_URL: http://server:8080
+      API_TOKEN: ${API_TOKEN:?Set API_TOKEN in deploy/.env}
+      DATA_ROOT: /data
+      ACTION_DIM: 14
+    volumes:
+      - ../sample-data:/data:ro
+    depends_on:
+      - server
+    restart: unless-stopped
+volumes:
+  pgdata:
+  miniodata:

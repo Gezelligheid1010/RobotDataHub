@@ -1,0 +1,8 @@
+<template><div class="titlebar"><div><h1>Episode 浏览</h1><p class="sub">时间步索引、Parquet 位置与视频文件</p></div><el-button @click="$router.push('/datasets')">返回数据集</el-button></div><div class="panel"><el-table :data="episodes" v-loading="loading" stripe><el-table-column prop="episode_index" label="Episode"/><el-table-column prop="length" label="Frames"/><el-table-column prop="from_index" label="起始索引"/><el-table-column prop="to_index" label="结束索引(不含)"/><el-table-column prop="data_file" label="Parquet 文件" min-width="190"/><el-table-column label="视频"><template #default="{row}"><el-button v-if="row.video_file" link type="primary" @click="watch(row.video_file)">播放视频</el-button><span v-else class="muted">未关联</span></template></el-table-column></el-table><el-empty v-if="!episodes.length&&!loading" description="请先导入 manifest.json"/></div><el-dialog v-model="playerOpen" title="Episode 视频预览" width="760"><video v-if="videoURL" :src="videoURL" controls style="width:100%"/><p class="muted">播放能力依赖浏览器对文件编码的支持（例如 AV1）。</p></el-dialog></template>
+<script setup>
+import {ref,onMounted} from 'vue';import {useRoute} from 'vue-router';import {ElMessage} from 'element-plus';import {listEpisodes} from '../api/episode';import {fileUrl} from '../../dataset/api/dataset'
+const route=useRoute(),episodes=ref([]),loading=ref(false),playerOpen=ref(false),videoURL=ref('')
+async function refresh(){loading.value=true;try{episodes.value=await listEpisodes(route.params.id)}catch(e){ElMessage.error(e.response?.data?.error||e.message)}finally{loading.value=false}}
+async function watch(path){try{videoURL.value=(await fileUrl(route.params.id,path)).url;playerOpen.value=true}catch(e){ElMessage.error(e.message)}}
+onMounted(refresh)
+</script>

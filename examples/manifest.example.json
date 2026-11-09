@@ -1,0 +1,1 @@
+{"fps":50,"action_dim":14,"episodes":[{"episode_index":0,"length":400,"from_index":0,"to_index":400,"data_file":"data/chunk-000/file-000.parquet","video_file":"videos/chunk-000/camera-0.mp4"},{"episode_index":1,"length":400,"from_index":400,"to_index":800,"data_file":"data/chunk-000/file-000.parquet","video_file":"videos/chunk-000/camera-0.mp4"}]}
